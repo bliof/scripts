@@ -1,0 +1,48 @@
+#!/bin/bash -l
+
+set -e
+
+build_log=$(mktemp)
+
+function step {
+    echo -e "\033[0;32m[$(date)] $1\033[0m"
+}
+
+step "Starting"
+echo "Log at: $build_log"
+pushd ~/local/vim
+
+step "Uninstall"
+sudo make uninstall > /dev/null 2>&1
+make distclean > /dev/null 2>&1
+
+step "Fetching latest version"
+git fetch origin master --quiet
+git log master..origin/master --oneline
+git checkout -B master origin/master --quiet
+
+step "Using system ruby"
+rvm use system
+
+step "Building"
+set -v
+./configure --with-features=huge \
+    --enable-multibyte \
+    --enable-rubyinterp=yes \
+    --enable-pythoninterp=yes \
+    --enable-python3interp=yes \
+    --enable-perlinterp=yes \
+    --enable-luainterp=yes \
+    --enable-cscope \
+    --prefix=/usr/local > $build_log 2>&1
+
+set +v
+
+step "Make"
+make > $build_log 2>&1
+
+step "Installing"
+sudo make install > $build_log 2>&1
+popd
+
+step "Done 🤪"
